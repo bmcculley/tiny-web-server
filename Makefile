@@ -1,7 +1,4 @@
-CC = c99
-CFLAGS = -Wall -O2
-
-# LIB = -lpthread
+CFLAGS = -Wall -O2 -std=c99
 
 all: tiny
 

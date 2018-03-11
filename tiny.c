@@ -1,8 +1,10 @@
 #include <arpa/inet.h>          /* inet_ntoa */
 #include <signal.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <dirent.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <time.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -11,13 +13,14 @@
 #include <string.h>
 #include <sys/sendfile.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #define LISTENQ  1024  /* second argument to listen() */
 #define MAXLINE 1024   /* max length of a line */
 #define RIO_BUFSIZE 1024
+
+DIR *fdopendir(int);
+int openat(int dirfd,const char *pathname, int flags);
 
 typedef struct {
     int rio_fd;                 /* descriptor for this buf */
@@ -281,18 +284,16 @@ void parse_request(int fd, http_request *req){
         }
     }
     char* filename = uri;
-    if(uri[0] == '/'){
-        filename = uri + 1;
-        int length = strlen(filename);
-        if (length == 0){
-            filename = ".";
-        } else {
-            for (int i = 0; i < length; ++ i) {
-                if (filename[i] == '?') {
-                    filename[i] = '\0';
-                    break;
-                }
-            }
+    while (filename[0] == '/') { filename = filename+1; }
+    int length = strlen(filename);
+    if (length == 0){
+        filename = ".";
+    } else {
+        for (int i = 0; i < length; ++ i) {
+           if (filename[i] == '?') {
+                filename[i] = '\0';
+                break;
+           }
         }
     }
     url_decode(filename, req->filename, MAXLINE);
@@ -337,7 +338,7 @@ void serve_static(int out_fd, int in_fd, http_request *req,
         if(sendfile(out_fd, in_fd, &offset, req->end - req->offset) <= 0) {
             break;
         }
-        printf("offset: %d \n\n", offset);
+        printf("offset: %ld \n\n", offset);
         close(out_fd);
         break;
     }
@@ -390,16 +391,16 @@ int main(int argc, char** argv){
             default_port = atoi(argv[1]);
         } else {
             path = argv[1];
-            if(chdir(argv[1]) != 0) {
-                perror(argv[1]);
+            if(chdir(path) != 0) {
+                perror(path);
                 exit(1);
             }
         }
     } else if (argc == 3) {
         default_port = atoi(argv[2]);
         path = argv[1];
-        if(chdir(argv[1]) != 0) {
-            perror(argv[1]);
+        if(chdir(path) != 0) {
+            perror(path);
             exit(1);
         }
     }
