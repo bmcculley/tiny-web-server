@@ -1,7 +1,5 @@
 CFLAGS = -Wall -O2 -std=c99
 
-LIB = -lpthread
-
 all: tiny
 
 tiny: tiny.c
